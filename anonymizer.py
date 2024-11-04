@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import json
+import io
+import zipfile
 
 st.title("Anonymisation des données CSV")
 data_file = st.file_uploader("Télécharger le fichier JSON avec les informations personnelles : ", type=["json"])
@@ -31,16 +33,18 @@ if data_file is not None and correspondance_file is not None:
         st.write(f"Nombre total de remplacements effectués : {compteur_remplacement}")
         remplacements_df = pd.DataFrame(remplacements_effectues)
         remplacements_csv = remplacements_df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="Télécharger le fichier JSON anonymisé",
-            data=data_df,
-            file_name="fichier_anonymise.json",
-            mime="application/json"
-        )
-        st.download_button(
-            label="Télécharger la liste des emails remplacés avec leurs IDs",
-            data=remplacements_csv,
-            file_name="remplacements_effectues.csv",
-            mime="text/csv"
-        )
-        st.success("Les IDs ont été anonymisés. Vous pouvez télécharger le fichier modifié.")
+        with io.BytesIO() as buffer:
+            with zipfile.ZipFile(buffer, "w") as zip_file:
+                # Ajouter le JSON modifié
+                zip_file.writestr("fichier_anonymise.json", data_df)
+                # Ajouter le CSV des remplacements
+                zip_file.writestr("remplacements_effectues.csv", remplacements_csv)
+
+            # Utiliser le contenu du ZIP pour le téléchargement
+            st.download_button(
+                label="Télécharger le ZIP contenant les fichiers anonymisés",
+                data=buffer.getvalue(),
+                file_name="fichiers_anonymises.zip",
+                mime="application/zip"
+            )
+            st.success("Anonymisation terminée et fichiers ZIP prêts au téléchargement.")
